@@ -14,8 +14,8 @@ from docopt import docopt
 import pkg_resources
 
 cmd_str = """Usage:
-rd_filters filter --in INPUT_FILE --prefix PREFIX [--rules RULES_FILE_NAME] [--alerts ALERT_FILE_NAME][--np NUM_CORES]
-rd_filters template --out TEMPLATE_FILE [--rules RULES_FILE_NAME]
+rd_filters filter --in Biodacquim.smi --prefix my_output [--rules rules.json] [--alerts alert_collection][--np NUM_CORES]
+rd_filters template --out TEMPLATE_FILE [--rules rules.json]
 
 Options:
 --in INPUT_FILE input file name
@@ -27,22 +27,22 @@ Options:
 """
 
 
-def read_rules(rules_file_name):
+def read_rules(rules.json):
     """
     Read rules from a JSON file
     :param rules_file_name: JSON file name
     :return: dictionary corresponding to the contents of the JSON file
     """
-    with open(rules_file_name) as json_file:
+    with open(rules.json) as json_file:
         try:
-            rules_dict = json.load(json_file)
+            rules_dict = json.load(rules.json)
             return rules_dict
         except json.JSONDecodeError:
-            print(f"Error parsing JSON file {rules_file_name}")
+            print(f"Error parsing JSON file {rules.json}")
             sys.exit(1)
 
 
-def write_rules(rule_dict, file_name):
+def write_rules(rules.json, rules):
     """
     Write configuration to a JSON file
     :param rule_dict: dictionary with rules
@@ -55,7 +55,7 @@ def write_rules(rule_dict, file_name):
     ofs.close()
 
 
-def default_rule_template(alert_list, file_name):
+def default_rule_template(alert_collection, Output):
     """
     Build a default rules template
     :param alert_list: list of alert set names
@@ -70,15 +70,15 @@ def default_rule_template(alert_list, file_name):
         "TPSA": [0, 200],
         "Rot": [0, 10]
     }
-    for rule_name in alert_list:
-        if rule_name == "Inpharmatica":
+    for rules.json in alert_collection:
+        if rules.json == "Inpharmatica":
             default_rule_dict["Rule_" + rule_name] = True
         else:
             default_rule_dict["Rule_" + rule_name] = False
     write_rules(default_rule_dict, file_name)
 
 
-def get_config_file(file_name, environment_variable):
+def get_config_file(Biofacquim.smi, environment_variable):
     """
     Read a configuration file, first look for the file, if you can't find
     it there, look in the directory pointed to by environment_variable
@@ -95,32 +95,32 @@ def get_config_file(file_name, environment_variable):
             if os.path.exists(config_file_path):
                 return config_file_path
 
-    error_list = [f"Could not file {file_name}"]
+    error_list = [f"Could not file {Biofacquim.smi}"]
     if config_dir:
         err_str = f"Could not find {config_file_path} based on the {environment_variable}" + \
                   "environment variable"
         error_list.append(err_str)
-    error_list.append(f"Please check {file_name} exists")
+    error_list.append(f"Please check {Biofacquim.smi} exists")
     error_list.append(f"Or in the directory pointed to by the {environment_variable} environment variable")
     print("\n".join(error_list))
     sys.exit(1)
 
 
 class RDFilters:
-    def __init__(self, rules_file_name):
-        good_name = get_config_file(rules_file_name, "FILTER_RULES_DIR")
+    def __init__(self, rules.json):
+        good_name = get_config_file(rules.json, "FILTER_RULES_DIR")
         self.rule_df = pd.read_csv(good_name)
         # make sure there wasn't a blank line introduced
         self.rule_df = self.rule_df.dropna()
         self.rule_list = []
 
-    def build_rule_list(self, alert_name_list):
+    def build_rule_list(self, alert_collection):
         """
         Read the alerts csv file and select the rule sets defined in alert_name_list
         :param alert_name_list: list of alert sets to use
         :return:
         """
-        self.rule_df = self.rule_df[self.rule_df.rule_set_name.isin(alert_name_list)]
+        self.rule_df = self.rule_df[self.rule_df.rule_set_name.isin(alert_collection)]
         tmp_rule_list = self.rule_df[["rule_id", "smarts", "max", "description"]].values.tolist()
         for rule_id, smarts, max_val, desc in tmp_rule_list:
             smarts_mol = Chem.MolFromSmarts(smarts)
@@ -156,19 +156,19 @@ class RDFilters:
 
 def main():
     cmd_input = docopt(cmd_str)
-    alert_file_name = cmd_input.get("--alerts") or pkg_resources.resource_filename('rd_filters',
+    alert_collection = cmd_input.get("--alerts") or pkg_resources.resource_filename('rd_filters',
                                                                                    "data/alert_collection.csv")
-    rf = RDFilters(alert_file_name)
+    rf = RDFilters(alert_collection)
 
     if cmd_input.get("template"):
         template_output_file = cmd_input.get("--out")
         default_rule_template(rf.get_alert_sets(), template_output_file)
 
     elif cmd_input.get("filter"):
-        input_file_name = cmd_input.get("--in")
-        rules_file_name = cmd_input.get("--rules") or pkg_resources.resource_filename('rd_filters', "data/rules.json")
+        Biofacquim.smi = cmd_input.get("--in")
+        rules.json = cmd_input.get("--rules") or pkg_resources.resource_filename('rd_filters', "data/rules.json")
         rules_file_path = get_config_file(rules_file_name, "FILTER_RULES_DATA")
-        prefix_name = cmd_input.get("--prefix")
+        my_output = cmd_input.get("--prefix")
         num_cores = cmd_input.get("--np") or mp.cpu_count()
         num_cores = int(num_cores)
 
